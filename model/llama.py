@@ -233,6 +233,7 @@ class LlamaMLP(nn.Module):
             resid_scale_override=config.quip_params.get(
                 'resid_scale_override', -1),
             train_mode=config.quip_params.get('train_mode', False),
+            activation_quantization=config.quip_params.get('activation_quantization'),
         )
         self.down_proj = QuantizedLinear(
             self.intermediate_size,
@@ -247,6 +248,7 @@ class LlamaMLP(nn.Module):
             resid_scale_override=config.quip_params.get(
                 'resid_scale_override', -1),
             train_mode=config.quip_params.get('train_mode', False),
+            activation_quantization=config.quip_params.get('activation_quantization'),
         )
         self.act_fn = ACT2FN[config.hidden_act]
 
@@ -316,6 +318,7 @@ class LlamaAttention(nn.Module):
             resid_scale_override=config.quip_params.get(
                 'resid_scale_override', -1),
             train_mode=config.quip_params.get('train_mode', False),
+            activation_quantization=config.quip_params.get('activation_quantization'),
         )
 
         self.o_proj = QuantizedLinear(
@@ -331,6 +334,7 @@ class LlamaAttention(nn.Module):
             resid_scale_override=config.quip_params.get(
                 'resid_scale_override', -1),
             train_mode=config.quip_params.get('train_mode', False),
+            activation_quantization=config.quip_params.get('activation_quantization'),
         )
         self._init_rope()
 

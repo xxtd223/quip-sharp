@@ -327,6 +327,8 @@ class QuantizedE8P12RVQ4BLinear(nn.Module):
             x = (x.to(torch.float16) @ self.W).float()
         else:
             x = matmul_hadU_cuda(x, had_left_T, K_left) / self.scale
+            if kwargs.get('activation_quantizer') is not None:
+                x = kwargs['activation_quantizer'](x)
 
             resid_scale = resid_scale_override if resid_scale_override > 0 else \
                 self.codebook.opt_resid_scale

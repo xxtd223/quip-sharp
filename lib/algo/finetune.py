@@ -12,6 +12,7 @@ from lib import codebook, utils
 from lib.linear import *
 
 from . import quip
+from lib.linear.activation_quantization import activation_config, activation_overrides
 
 
 def finetune_decoder_layer(layer, name, device, train_dl, valid_dl, args):
@@ -87,6 +88,7 @@ def quantize_finetune_decoder_layer(mixed_layer, quant_order, idx, cb, args,
         'bias': False,
         'train_mode': args.ft_train_mode,
         'grad_ckpt': args.ft_grad_ckpt,
+        'activation_quantization': activation_config(activation_overrides(args)),
     }
 
     for quant_i, (linear_attr, name) in enumerate(quant_order):

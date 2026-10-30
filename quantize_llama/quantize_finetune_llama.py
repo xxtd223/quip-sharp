@@ -15,6 +15,8 @@ from transformers.modeling_attn_mask_utils import \
 from lib import codebook, utils
 from lib.algo import finetune, quip
 from lib.linear import FusedLinear
+from lib.linear.activation_quantization import (activation_config, activation_overrides,
+                                                add_activation_args)
 from model.llama import LlamaDecoderLayer
 
 parser = argparse.ArgumentParser()
@@ -56,6 +58,7 @@ parser.add_argument('--ft_valid_size', default=128, type=float)
 parser.add_argument('--ft_early_stop', default=3, type=int)
 parser.add_argument('--ft_train_mode', action='store_true')
 parser.add_argument('--ft_grad_ckpt', action='store_true')
+add_activation_args(parser)
 
 
 def check_exist(idx, args):
@@ -128,6 +131,11 @@ def quantize_llama_layer(layer, idx, cb, args, device, pre_orig_emb, orig_emb,
 
 
 def main(args):
+    act_config = activation_config(activation_overrides(args))
+    if act_config['bits'] and (args.ft_epochs != 0 or args.ft_train_mode):
+        raise ValueError('Activation QDQ is inference-only PTQ; use --ft_epochs 0 without --ft_train_mode')
+    if act_config['bits'] and args.incoh_mode != 'had':
+        raise ValueError('Activation QDQ currently supports the Hadamard linear path')
     dtype_ = torch.float64 if args.use_fp64 else torch.float32
 
     cb = codebook.get_codebook(args.codebook)
@@ -147,6 +155,7 @@ def main(args):
         'idx_dtype': str(cb.idx_dtype),
         'packsz': cb.packsz,
         'resid_scale_override': args.resid_scale_override,
+        'activation_quantization': act_config,
     }
     all_config['model_config'].update({'quip_params': quip_params})
     torch.save(all_config, os.path.join(args.save_path, 'config.pt'))

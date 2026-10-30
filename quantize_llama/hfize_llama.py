@@ -10,18 +10,26 @@ from lib import codebook, utils
 from lib.utils.unsafe_import import model_from_hf_path
 from model.llama import LlamaForCausalLM
 from lib.utils.model_version import MODEL_VERSION
+from lib.linear.activation_quantization import (activation_config, activation_overrides,
+                                                add_activation_args)
 
 torch.set_grad_enabled(False)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--quantized_path', type=str)
 parser.add_argument('--hf_output_path', type=str)
+add_activation_args(parser)
 
 
 def main(args):
     assert os.path.exists(args.quantized_path)
-    saved_config = torch.load(os.path.join(args.quantized_path, 'config.pt'))
+    # This local project config contains argparse.Namespace and LlamaConfig.
+    saved_config = torch.load(os.path.join(args.quantized_path, 'config.pt'),
+                              weights_only=False)
     model_config = saved_config['model_config']
+    model_config.quip_params['activation_quantization'] = activation_config({
+        **model_config.quip_params.get('activation_quantization', {}),
+        **activation_overrides(args)})
 
     codebook_id = codebook.get_id(model_config.quip_params['codebook'])
     codesz = model_config.quip_params['codesz']

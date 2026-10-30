@@ -275,6 +275,8 @@ class QuantizedE8P12Linear(nn.Module):
             x = (x.to(torch.float16) @ self.W).float()
         else:
             x = matmul_hadU_cuda(x, had_left_T, K_left) / self.scale
+            if kwargs.get('activation_quantizer') is not None:
+                x = kwargs['activation_quantizer'](x)
                 
             if x.size(0) == 1:
                 x = torch.ops.quip_lib.decode_matvec_e8p(

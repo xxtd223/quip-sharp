@@ -6,6 +6,7 @@ import torch.nn as nn
 
 from lib import codebook
 from lib.utils import clean, dtype_from_str, get_hadK
+from .activation_quantization import E8ActivationQuantizer
 
 
 class QuantizedLinear(nn.Module):
@@ -25,6 +26,7 @@ class QuantizedLinear(nn.Module):
         resid_scale_override=-1,
         train_mode=False,
         grad_ckpt=False,
+        activation_quantization=None,
     ):
         super().__init__()
         assert rank == 0 # 7/22/2024 removed support for low rank correction
@@ -33,6 +35,11 @@ class QuantizedLinear(nn.Module):
         self.rank = rank
         self.rescale_WH = rescale_WH
         self.resid_scale_override = resid_scale_override
+        self.activation_quantizer = E8ActivationQuantizer(activation_quantization)
+        if self.activation_quantizer.enabled and train_mode:
+            raise ValueError('Rotated activation QDQ does not support cached train_mode weights')
+        if self.activation_quantizer.enabled and in_features % 8:
+            raise ValueError('Activation QDQ requires input dimensions divisible by 8')
 
         self.has_bias = bias
         if self.has_bias:
@@ -100,6 +107,8 @@ class QuantizedLinear(nn.Module):
                                                  use_reentrant=True)
 
     def no_ckpt_forward(self, input):
+        if self.activation_quantizer.enabled and self.train_mode:
+            raise ValueError('Rotated activation QDQ does not support cached train_mode weights')
         if not self.built_codebook_class:
             self.codebook_class = codebook.get_quantized_class(
                 self.codebook_id.item())(self.Qidxs.device)
@@ -161,6 +170,7 @@ class QuantizedLinear(nn.Module):
             scaleWH=self.scaleWH,
             packed=self.packed,
             resid_scale_override=self.resid_scale_override,
+            activation_quantizer=self.activation_quantizer if self.activation_quantizer.enabled else None,
             train_mode=self.train_mode).to(input.dtype)
         if self.has_bias:
             return result + self.bias

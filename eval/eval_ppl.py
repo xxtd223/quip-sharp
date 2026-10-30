@@ -11,6 +11,7 @@ from tqdm import tqdm
 
 from lib.utils import gptq_data_utils
 from lib.utils.unsafe_import import model_from_hf_path
+from lib.linear.activation_quantization import add_activation_args, activation_overrides
 
 torch.set_grad_enabled(False)
 
@@ -20,6 +21,7 @@ parser.add_argument('--hf_path', default='hfized/quantized_hada_70b', type=str)
 parser.add_argument('--seqlen', default=4096, type=int)
 parser.add_argument('--no_use_cuda_graph', action='store_true')
 parser.add_argument('--no_use_flash_attn', action='store_true')
+add_activation_args(parser)
 
 
 def main(args):
@@ -27,7 +29,8 @@ def main(args):
     model, model_str = model_from_hf_path(
         args.hf_path,
         use_cuda_graph=not args.no_use_cuda_graph,
-        use_flash_attn=not args.no_use_flash_attn)
+        use_flash_attn=not args.no_use_flash_attn,
+        activation_quantization=activation_overrides(args))
 
     for dataset in datasets:
         input_tok = gptq_data_utils.get_test_tokens(dataset,

@@ -14,3 +14,18 @@ hadamard_cuda/build/
 hadamard_cuda/dist/
 report*.nsys-rep
 report*.sqlite
+
+# Keep development documents and experiment artifacts local.
+*.md
+!/README.md
+!/FUNCTIONAL_MODULES.md
+/docs/e8p2/
+/E8P^2开发文档/
+/reproduction/*
+!/reproduction/*.py
+/reproduction/**/checkpoints/
+/reproduction/hessians*/
+/reproduction/**/*.log
+/models/
+/.venv/
+/.wheels/

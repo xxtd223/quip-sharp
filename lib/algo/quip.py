@@ -6,6 +6,8 @@ import torch
 from tqdm import tqdm
 
 from lib import utils
+from lib.utils.matmul_fft import (matmul_rfft, matmul_rfft_inverse,
+                                  random_fft_phase)
 
 
 def RHT_H(H, SU):
@@ -55,6 +57,11 @@ def incoherence_preprocess(H, W, args):
         SV = utils.rand_ortho_butterfly_noblock(m).to(dtype_).to(device)
         Hr = SU @ Hr @ SU.T
         Wr = SV @ Wr @ SU.T
+    elif args.incoh_mode == "fft":
+        SU = random_fft_phase(n, device=device, dtype=dtype_)
+        SV = random_fft_phase(m, device=device, dtype=dtype_)
+        Hr = matmul_rfft(matmul_rfft(Hr, SU).T, SU)
+        Wr = matmul_rfft(matmul_rfft(Wr.T, SV).T, SU)
     else:
         raise NotImplementedError
     SV = SV.cpu()
@@ -78,6 +85,9 @@ def incoherence_process(hatWr, SU, SV, scaleWH, args):
     # reverse kronecker product
     elif args.incoh_mode == 'kron':
         hatWr = SV.T.to(device) @ hatWr @ SU.to(device)
+    elif args.incoh_mode == 'fft':
+        hatWr = matmul_rfft_inverse(
+            matmul_rfft_inverse(hatWr, SU).T, SV).T
     else:
         raise NotImplementedError
 
@@ -487,7 +497,8 @@ def quantize_linear(weights, save_path, hessian_path, cb, args, device='cpu'):
     if os.path.exists(save_path):
         return
 
-    H_data = torch.load(hessian_path, map_location=torch.device('cpu'))
+    H_data = torch.load(hessian_path, map_location=torch.device('cpu'),
+                        weights_only=True)
     H = utils.flat_to_sym(H_data['flatH'], H_data['n'])
     mu = H_data['mu']
     H.add_(mu[None, :] * mu[:, None])
